@@ -2,9 +2,11 @@ using System;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Xml.Linq;
-using System.Xml;
+using System.Linq;
 using System.IO;
 using System.Net.Http;
+using System.Net;
+
 
 
 
@@ -12,16 +14,19 @@ namespace historyextractor
 {
     class Program
     {
-
-        static void Main(string[] args)
+       
+        public static void Main()
         {
             Console.WriteLine("Busqueda de dispositivos");
             BuscarDispositivos();
-            //GetApi();
+            IgnoreBadCertificates();
+            GetApi(5180);
+
         }
 
-        public const string CONNECTION_STRING = "Data Source=EG-REPORT;Initial Catalog=egprtg;User Id=sa;Password=**repon**";
-        public static List<int> BuscarDispositivos()
+
+        public const string CONNECTION_STRING = "Data Source=DATABASE;Initial Catalog=dbo;User Id=sa;Password=**pass**";
+        public static  List<int> BuscarDispositivos()
         {
             List<int> dispositivos = new List<int>();
             using (var cnn = new SqlConnection(CONNECTION_STRING))
@@ -37,44 +42,54 @@ namespace historyextractor
                     }
                 }
                 
-                return dispositivos;
+                return  dispositivos;
                 
             }
             
         }
 
-        public static void GetApi(int dispositivos)
+        private static void GetApi(int dispositivos)
         {
-            string usr = "pthhtin";
-            string pssd = "*Etgtgt*";
+            string usr = "usr";
+            string pssd = "*pass*";
             int id = dispositivos;
-            string indate = "2019-07-01-00-00-00";
-            string endate = "2019-08-01-00-00-00";
+            string indate;
+            string endate;
 
 
+            Console.WriteLine("Ingrese la fecha inicial en el formato AAAA-MM-DD: ");
+            indate = Console.ReadLine();
+
+            Console.WriteLine("Ingrese la fecha final en el formato AAAA-MM-DD: ");
+            endate = Console.ReadLine();
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" +id+ "&sdate=" + indate + "&edate=" + endate + "&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
-                //HTTP GET
-                var responseTask = client.GetAsync("uptimepercent");
-                responseTask.Wait();
+                client.BaseAddress = new Uri("https://url.com.co/api/");
+                var response = client.GetAsync("historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" + id + "&sdate=" + indate + "-00-00-00&edate=" + endate + "-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                var result = response.Result.Content.ReadAsStringAsync();
+                result.Wait();
 
-                var result = responseTask.Result;
-                if (result.IsSuccessStatusCode)
-                {
-
-                    var readTask = result.Content.ReadAsAsync<uptimepercent[]>();
-                    readTask.Wait();
-
-                    var uptimepercents = readTask.Result;
-
-                    foreach (var uptimepercent in uptimepercents)
-                    {
-                        Console.WriteLine(uptimepercent);
-                    }
-                }
+                XElement XTemp = XElement.Parse(result.Result);
+                var queryCDATAXML = from element in XTemp.DescendantNodes()
+                                    where element.NodeType == System.Xml.XmlNodeType.CDATA
+                                    select element.Parent.Value.Trim();
+                string BodyHtml = queryCDATAXML.ToList<string>()[0].ToString();
             }
         }
-    }  
+
+        public static void IgnoreBadCertificates()
+        {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+            ServicePointManager.ServerCertificateValidationCallback +=
+                (sender, cert, chain, sslPolicyErrors) => { return true; };
+        }
+
+    }
+
+    public class uptpercent
+    {
+        public int uptimepercent { get; set; }
+        public string downtime { get; set; }
+    }
 }
