@@ -20,7 +20,7 @@ namespace historyextractor
             //GetApi();
         }
 
-        public const string CONNECTION_STRING = "Data Source=EG-REPORT;Initial Catalog=egprtg;User Id=sa;Password=**Labolge**";
+        public const string CONNECTION_STRING = "Data Source=EG-REPORT;Initial Catalog=egprtg;User Id=sa;Password=**repon**";
         public static List<int> BuscarDispositivos()
         {
             List<int> dispositivos = new List<int>();
@@ -45,13 +45,13 @@ namespace historyextractor
 
         public static void GetApi()
         {
-            string usr = "prtgadmin";
-            string pssd = "*E61084l2015*";
+            string usr = "repoadmin";
+            string pssd = "*jdfnasdkcvm5*";
 
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=5180&sdate=2019-07-01-00-00-00&edate=2019-08-01-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                client.BaseAddress = new Uri("https://prt0.eobal.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=5180&sdate=2019-07-01-00-00-00&edate=2019-08-01-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
                 //HTTP GET
                 var responseTask = client.GetAsync("uptimepercent");
                 responseTask.Wait();
