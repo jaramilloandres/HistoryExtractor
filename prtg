@@ -1,0 +1,76 @@
+using System;
+using System.Collections.Generic;
+using System.Data.SqlClient;
+using System.Xml.Linq;
+using System.Xml;
+using System.IO;
+using System.Net.Http;
+
+
+
+namespace historyextractor
+{
+    class Program
+    {
+
+        static void Main(string[] args)
+        {
+            Console.WriteLine("Busqueda de dispositivos");
+            BuscarDispositivos();
+            //GetApi();
+        }
+
+        public const string CONNECTION_STRING = "Data Source=EG-REPORT;Initial Catalog=egprtg;User Id=sa;Password=**Labolge**";
+        public static List<int> BuscarDispositivos()
+        {
+            List<int> dispositivos = new List<int>();
+            using (var cnn = new SqlConnection(CONNECTION_STRING))
+            {
+                cnn.Open();
+                var command = new SqlCommand($@" select ID from Device", cnn);
+                using (var dr = command.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        dispositivos.Add(Convert.ToInt32(dr["ID"]));
+                        
+                    }
+                }
+                
+                return dispositivos;
+                
+            }
+            
+        }
+
+        public static void GetApi()
+        {
+            string usr = "prtgadmin";
+            string pssd = "*E61084l2015*";
+
+
+            using (var client = new HttpClient())
+            {
+                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=5180&sdate=2019-07-01-00-00-00&edate=2019-08-01-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                //HTTP GET
+                var responseTask = client.GetAsync("uptimepercent");
+                responseTask.Wait();
+
+                var result = responseTask.Result;
+                if (result.IsSuccessStatusCode)
+                {
+
+                    var readTask = result.Content.ReadAsAsync<uptimepercent[]>();
+                    readTask.Wait();
+
+                    var uptimepercents = readTask.Result;
+
+                    foreach (var uptimepercent in uptimepercents)
+                    {
+                        Console.WriteLine(uptimepercent);
+                    }
+                }
+            }
+        }
+    }  
+}
