@@ -49,13 +49,13 @@ namespace historyextractor
             string pssd = "*Etgtgt*";
             int id = dispositivos;
             string indate = "2019-07-01-00-00-00";
-            string endate = "2019-08-01-00-00-0";
+            string endate = "2019-08-01-00-00-00";
 
 
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" +id+ "&sdate=" + indate + "&edate=" + endate + "0&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" +id+ "&sdate=" + indate + "&edate=" + endate + "&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
                 //HTTP GET
                 var responseTask = client.GetAsync("uptimepercent");
                 responseTask.Wait();
