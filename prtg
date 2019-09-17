@@ -43,15 +43,19 @@ namespace historyextractor
             
         }
 
-        public static void GetApi()
+        public static void GetApi(int dispositivos)
         {
-            string usr = "repoadmin";
-            string pssd = "*jdfnasdkcvm5*";
+            string usr = "pthhtin";
+            string pssd = "*Etgtgt*";
+            int id = dispositivos;
+            string indate = "2019-07-01-00-00-00";
+            string endate = "2019-08-01-00-00-0";
+
 
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://prt0.eobal.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=5180&sdate=2019-07-01-00-00-00&edate=2019-08-01-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                client.BaseAddress = new Uri("https://prtgl00.e-global.com.co/api/historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" +id+ "&sdate=" + indate + "&edate=" + endate + "0&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
                 //HTTP GET
                 var responseTask = client.GetAsync("uptimepercent");
                 responseTask.Wait();
