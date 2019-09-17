@@ -17,18 +17,18 @@ namespace historyextractor
        
         public static void Main()
         {
-            Console.WriteLine("Busqueda de dispositivos");
-            BuscarDispositivos();
+            Console.WriteLine("Busqueda de Dispositivos");
+            SearchDevices();
             IgnoreBadCertificates();
             GetApi(5180);
 
         }
 
 
-        public const string CONNECTION_STRING = "Data Source=DATABASE;Initial Catalog=dbo;User Id=sa;Password=**pass**";
-        public static  List<int> BuscarDispositivos()
+        public const string CONNECTION_STRING = "Data Source=DATABASE;Initial Catalog=dbo;User Id=sa;Password=**Password**";
+        public static  List<int> SearchDevices()
         {
-            List<int> dispositivos = new List<int>();
+            List<int> devices = new List<int>();
             using (var cnn = new SqlConnection(CONNECTION_STRING))
             {
                 cnn.Open();
@@ -37,25 +37,20 @@ namespace historyextractor
                 {
                     while (dr.Read())
                     {
-                        dispositivos.Add(Convert.ToInt32(dr["ID"]));
-                        
+                        devices.Add(Convert.ToInt32(dr["ID"]));  
                     }
                 }
-                
-                return  dispositivos;
-                
-            }
-            
+                return  devices;
+            }   
         }
 
-        private static void GetApi(int dispositivos)
+        private static void GetApi(int devices)
         {
             string usr = "usr";
             string pssd = "*pass*";
-            int id = dispositivos;
+            int id = devices;
             string indate;
             string endate;
-
 
             Console.WriteLine("Ingrese la fecha inicial en el formato AAAA-MM-DD: ");
             indate = Console.ReadLine();
