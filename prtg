@@ -81,10 +81,4 @@ namespace historyextractor
         }
 
     }
-
-    public class uptpercent
-    {
-        public int uptimepercent { get; set; }
-        public string downtime { get; set; }
-    }
 }
