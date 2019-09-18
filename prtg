@@ -14,64 +14,120 @@ namespace historyextractor
 {
     class Program
     {
-       
+
+        public class test
+        {
+            public int idSensor { get; set; }
+            public string nameSensor { get; set; }
+
+            public string uptpercent { get; set; }
+
+            public string dntime { get; set; }
+
+        }
+
+        //crear metodo bool validarfecha(string fecha), split a las fechas '-', valida el tamaño del obeto AAAA-MM-DD, si pasa, valido el objeto en la posisicion [0]  y asi para cada array y convertir cada uno en entero, validar si son numeros, 
+
+        public static bool validarfecha(string indate)
+        {
+
+        //validar fechas split a las fechas '-', valida el tamaño del obeto AAAA-MM-DD, si pasa, valido el objeto en la posisicion [0]  y asi para cada array y convertir cada uno en entero, validar si son numeros, 
+
+            return true;
+        }
+
+
+
         public static void Main()
         {
-            Console.WriteLine("Busqueda de Dispositivos");
-            SearchDevices();
-            IgnoreBadCertificates();
-            GetApi(5180);
+            Console.WriteLine("Carga de Informacion");
+
+            string indate;
+            string endate;
+
+            bool iscorrect = false;
+            do
+            {
+                Console.WriteLine("Ingrese la fecha inicial en el formato AAAA-MM-DD: ");
+                indate = Console.ReadLine();
+
+                Console.WriteLine("Ingrese la fecha final en el formato AAAA-MM-DD: ");
+                endate = Console.ReadLine();
+
+                iscorrect = validarfecha(indate);
+                if (iscorrect)
+                {
+                    iscorrect = validarfecha(endate);
+                }
+            }
+
+            while (!iscorrect);
+
+            if (iscorrect)
+            {
+                IgnoreBadCertificates();
+                SearchDevices(indate, endate);
+            }
 
         }
 
 
-        public const string CONNECTION_STRING = "Data Source=DATABASE;Initial Catalog=dbo;User Id=sa;Password=**Password**";
-        public static  List<int> SearchDevices()
+        public const string CONNECTION_STRING = "Data Source=REPORT;Initial Catalog=dbo;User Id=sa;Password=**usr**";
+        public static void SearchDevices(string indate, string endate)
         {
-            List<int> devices = new List<int>();
             using (var cnn = new SqlConnection(CONNECTION_STRING))
             {
                 cnn.Open();
-                var command = new SqlCommand($@" select ID from Device", cnn);
+                var command = new SqlCommand($@"SELECT top 3 S.ID AS ID_Sensor,P.Name as Name FROM Sensor S INNER JOIN Device P ON P.ID = S.Device WHERE S.Name like '%ping%'", cnn);
                 using (var dr = command.ExecuteReader())
                 {
                     while (dr.Read())
                     {
-                        devices.Add(Convert.ToInt32(dr["ID"]));  
+                        int id = Convert.ToInt32(dr["ID_Sensor"]);
+                        test Element = GetApi(id, indate, endate);
+                        Element.idSensor = id;
+                        Element.nameSensor = Convert.ToString(dr["Name"]);
+                        grabarData(Element);
                     }
                 }
-                return  devices;
-            }   
+            }
         }
 
-        private static void GetApi(int devices)
+        private static test GetApi(int sensors, string indate, string endate)
         {
             string usr = "usr";
             string pssd = "*pass*";
-            int id = devices;
-            string indate;
-            string endate;
-
-            Console.WriteLine("Ingrese la fecha inicial en el formato AAAA-MM-DD: ");
-            indate = Console.ReadLine();
-
-            Console.WriteLine("Ingrese la fecha final en el formato AAAA-MM-DD: ");
-            endate = Console.ReadLine();
 
             using (var client = new HttpClient())
             {
                 client.BaseAddress = new Uri("https://url.com.co/api/");
-                var response = client.GetAsync("historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" + id + "&sdate=" + indate + "-00-00-00&edate=" + endate + "-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
+                var response = client.GetAsync("historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" + sensors + "&sdate=" + indate + "-00-00-00&edate=" + endate + "-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
                 var result = response.Result.Content.ReadAsStringAsync();
                 result.Wait();
 
                 XElement XTemp = XElement.Parse(result.Result);
-                var queryCDATAXML = from element in XTemp.DescendantNodes()
+                var GetCDATA = from element in XTemp.DescendantNodes()
                                     where element.NodeType == System.Xml.XmlNodeType.CDATA
                                     select element.Parent.Value.Trim();
-                string BodyHtml = queryCDATAXML.ToList<string>()[0].ToString();
+                
+                test Element = new test();
+                Element.uptpercent = GetCDATA.ToList<string>()[0].ToString();
+                Element.dntime = GetCDATA.ToList<string>()[1].ToString();
+
+                return Element;
             }
+            
+
         }
+
+
+        public static void grabarData(test data)
+        {
+            //grabar en la base de datos
+
+
+        }
+
 
         public static void IgnoreBadCertificates()
         {
@@ -82,3 +138,4 @@ namespace historyextractor
 
     }
 }
+
