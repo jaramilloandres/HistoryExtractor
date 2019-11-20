@@ -6,6 +6,9 @@ using System.Linq;
 using System.IO;
 using System.Net.Http;
 using System.Net;
+using System.Globalization;
+using System.Xml;
+using System.Text.RegularExpressions;
 
 
 
@@ -14,29 +17,15 @@ namespace historyextractor
 {
     class Program
     {
-
-        public class test
+        public const string CONNECTION_STRING = "Data Source=EG-REPORT;Initial Catalog=egprtgprod;User Id=sa;Password=**Labolge**";
+        public class DeviceData
         {
             public int idSensor { get; set; }
-            public string nameSensor { get; set; }
-
-            public string uptpercent { get; set; }
-
-            public string dntime { get; set; }
+            public string nameDevice { get; set; }
+            public string uptPercent { get; set; }
+            public string dnTime { get; set; }
 
         }
-
-        //crear metodo bool validarfecha(string fecha), split a las fechas '-', valida el tamaño del obeto AAAA-MM-DD, si pasa, valido el objeto en la posisicion [0]  y asi para cada array y convertir cada uno en entero, validar si son numeros, 
-
-        public static bool validarfecha(string indate)
-        {
-
-        //validar fechas split a las fechas '-', valida el tamaño del obeto AAAA-MM-DD, si pasa, valido el objeto en la posisicion [0]  y asi para cada array y convertir cada uno en entero, validar si son numeros, 
-
-            return true;
-        }
-
-
 
         public static void Main()
         {
@@ -44,8 +33,8 @@ namespace historyextractor
 
             string indate;
             string endate;
-
             bool iscorrect = false;
+
             do
             {
                 Console.WriteLine("Ingrese la fecha inicial en el formato AAAA-MM-DD: ");
@@ -54,53 +43,95 @@ namespace historyextractor
                 Console.WriteLine("Ingrese la fecha final en el formato AAAA-MM-DD: ");
                 endate = Console.ReadLine();
 
+                validarFechaDB(indate, endate);
+
                 iscorrect = validarfecha(indate);
                 if (iscorrect)
                 {
                     iscorrect = validarfecha(endate);
                 }
-            }
 
+            }
             while (!iscorrect);
 
             if (iscorrect)
-            {
+            {              
                 IgnoreBadCertificates();
                 SearchDevices(indate, endate);
+               
             }
-
         }
 
 
-        public const string CONNECTION_STRING = "Data Source=REPORT;Initial Catalog=dbo;User Id=sa;Password=**usr**";
-        public static void SearchDevices(string indate, string endate)
+        public static bool validarfecha(string indate)
         {
-            using (var cnn = new SqlConnection(CONNECTION_STRING))
+            DateTime dateTime;
+            bool isDateTime = true;
+
+            if (string.IsNullOrEmpty(indate))
             {
-                cnn.Open();
-                var command = new SqlCommand($@"SELECT top 3 S.ID AS ID_Sensor,P.Name as Name FROM Sensor S INNER JOIN Device P ON P.ID = S.Device WHERE S.Name like '%ping%'", cnn);
-                using (var dr = command.ExecuteReader())
+                return false;
+            }
+
+            isDateTime = DateTime.TryParseExact(indate, "yyyy-dd-MM", CultureInfo.InvariantCulture, DateTimeStyles.None, out dateTime);
+
+            if (!isDateTime)
+            {
+                Console.WriteLine("Ingrese una fecha valida");
+            }
+
+            return isDateTime;
+        }
+
+        public static void validarFechaDB(string indate, string endate)
+        {
+            using (var cnn1 = new SqlConnection(CONNECTION_STRING))
+            {
+                cnn1.Open();
+                // verifica si la fecha ya esta generada, y muestra el mensaje de error adecuado
+                var commandAccount = new SqlCommand($@"SELECT TOP(1) initial_date, end_date FROM ExtractedValues WHERE initial_date='{indate}' AND end_date='{endate}'", cnn1);
+                using (var dr = commandAccount.ExecuteReader())
                 {
-                    while (dr.Read())
+                    if (dr.HasRows)
                     {
-                        int id = Convert.ToInt32(dr["ID_Sensor"]);
-                        test Element = GetApi(id, indate, endate);
-                        Element.idSensor = id;
-                        Element.nameSensor = Convert.ToString(dr["Name"]);
-                        grabarData(Element);
+                        Console.WriteLine("Por favor ingrese otro rango de fecha distinto!");
+                        Environment.Exit(1);
                     }
                 }
             }
         }
 
-        private static test GetApi(int sensors, string indate, string endate)
+
+        public static void SearchDevices(string indate, string endate)
         {
-            string usr = "usr";
-            string pssd = "*pass*";
+            using (var cnn = new SqlConnection(CONNECTION_STRING))
+            {
+                cnn.Open();
+                var command = new SqlCommand($@"SELECT top 1 S.ID AS ID_Sensor,P.Name as Name FROM Sensor S INNER JOIN Device P ON P.ID = S.Device WHERE S.Name like '%ping%'", cnn);
+                using (var dr = command.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        int id = Convert.ToInt32(dr["ID_Sensor"]);
+                        DeviceData Element = GetApi(id, indate, endate);
+                        Element.idSensor = id;
+                        Element.nameDevice = Convert.ToString(dr["Name"]);
+                        SaveData(Element, indate, endate);
+                        GetApi2(Element, id, indate, endate);
+                    }
+                }
+            }
+        }
+
+
+        private static DeviceData GetApi(int sensors, string indate, string endate)
+        {
+            string usr = "prtgadmin";
+            string pssd = "*E61084l2015*";
 
             using (var client = new HttpClient())
             {
-                client.BaseAddress = new Uri("https://url.com.co/api/");
+                client.BaseAddress = new Uri("https://172.27.0.9/api/");
                 var response = client.GetAsync("historicdataupt.xml?username=" + usr + "&password=" + pssd + "&id=" + sensors + "&sdate=" + indate + "-00-00-00&edate=" + endate + "-00-00-00&avg=86400&pctavg=300&pctshow=false&pct=95&pctmode=true");
                 var result = response.Result.Content.ReadAsStringAsync();
                 result.Wait();
@@ -110,24 +141,76 @@ namespace historyextractor
                                     where element.NodeType == System.Xml.XmlNodeType.CDATA
                                     select element.Parent.Value.Trim();
                 
-                test Element = new test();
-                Element.uptpercent = GetCDATA.ToList<string>()[0].ToString();
-                Element.dntime = GetCDATA.ToList<string>()[1].ToString();
+                DeviceData Element = new DeviceData();
+                Element.uptPercent = GetCDATA.ToList<string>()[0].ToString();
+                Element.dnTime = GetCDATA.ToList<string>()[1].ToString();
 
                 return Element;
             }
-            
 
         }
 
-
-        public static void grabarData(test data)
+        public static void GetApi2(DeviceData data, int sensors, string indate, string endate)
         {
-            //grabar en la base de datos
+            string usr = "prtgadmin";
+            string pssd = "*E61084l2015*";
 
+            using (var client = new HttpClient())
+            {
+                client.BaseAddress = new Uri("https://172.27.0.9/api/");
+                var response = client.GetAsync("historicdata.xml?username=" + usr + "&password=" + pssd + "&id=" + sensors + "&sdate=" + indate + "-00-00-00&edate=" + endate + "-00-00-00&avg=3600&content=statehistory&sortby=datetime&columns=status,datetime&filter_status=5");
+                var result = response.Result.Content.ReadAsStringAsync();
+                result.Wait();
 
+                XElement rootNode = XElement.Parse(result.Result);
+                string valorStatus = rootNode.Element("item").Value;
+
+                List<string> dateList = new List<string>();
+
+                //Recorremos todos los nodos item 
+                foreach (XElement elementItem in rootNode.Descendants("item"))
+                { //En esta linea buscamos dentro del nodo item el nodo satus y obtenemos su valor tring 
+
+                    XElement nodoStatus = elementItem.Element("status");
+                    valorStatus = nodoStatus.Value;
+
+                    //Validamos si el valor del nodo status contiene "Down", si lo contiene capturamos el valor del nodo "datatime" 
+                    if (valorStatus.Contains("Down"))
+                    { //Campturamos el valor del nodo datatime 
+                        string valorDateTime = elementItem.Element("datetime").Value;
+                        dateList.Add(valorDateTime);
+                    }
+                    else
+                    {
+                    }
+                }
+
+                foreach (string dateDowntime in dateList)
+                {
+                    using (var cnn3 = new SqlConnection(CONNECTION_STRING))
+                    {
+                        cnn3.Open();
+                        SqlCommand cmdSaveAccount;
+                        cmdSaveAccount = new SqlCommand($@"INSERT INTO DowntimeValues (id_sensor, date_downtime, initial_date, end_date)
+                                                    VALUES ({data.idSensor}, '{dateDowntime}', '{indate}', '{endate}')", cnn3);
+                        cmdSaveAccount.ExecuteNonQuery();
+                    }
+                    
+                }
+            }          
         }
 
+        public static void SaveData(DeviceData data, string indate, string endate)
+        {
+            using (var cnn2 = new SqlConnection(CONNECTION_STRING))
+            {
+                cnn2.Open();
+                SqlCommand cmdSaveAccount;
+                cmdSaveAccount = new SqlCommand($@"INSERT INTO ExtractedValues (id_sensor, name, uptime_percent, downtime, initial_date, end_date)
+                                                        VALUES ({data.idSensor}, '{data.nameDevice}', '{data.uptPercent}', '{data.dnTime}', '{indate}', '{endate}')", cnn2);
+                cmdSaveAccount.ExecuteNonQuery();
+            } 
+        }
 
         public static void IgnoreBadCertificates()
         {
@@ -135,7 +218,5 @@ namespace historyextractor
             ServicePointManager.ServerCertificateValidationCallback +=
                 (sender, cert, chain, sslPolicyErrors) => { return true; };
         }
-
     }
 }
-
